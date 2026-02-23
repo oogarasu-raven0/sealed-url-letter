@@ -2,6 +2,8 @@
 
 URLベースで手紙を送信するサイトです
 
+URL: https://oogarasu-raven0.github.io/sealed-url-letter/
+
 1. ブラウザでサイトを開いて内容を記入
 2. パスワードを決めてURLを生成
 3. パスワードとURLを共有
