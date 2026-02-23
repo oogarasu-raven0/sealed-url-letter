@@ -283,6 +283,7 @@ import {
   
       // Markdown -> HTML -> サニタイズ
       let html = decrypted.text;
+      let renderedByMarked = false;
       if (window.marked) {
         // marked の UMD / ES 版など複数パターンに対応してパーサを取得
         let markedRoot = window.marked;
@@ -300,7 +301,7 @@ import {
             : null;
 
         if (optionsTarget) {
-          // 改行もある程度そのまま活かす
+          // 改行もそのまま <br> として活かす
           optionsTarget.setOptions({
             gfm: true,
             breaks: true
@@ -317,7 +318,14 @@ import {
 
         if (parser) {
           html = parser(decrypted.text);
+          renderedByMarked = true;
         }
+      }
+
+      // もし何らかの理由で marked が使えなかった場合でも、
+      // 改行だけは <br> に変換して一行潰れを防ぐ
+      if (!renderedByMarked) {
+        html = decrypted.text.replace(/\r\n|\r|\n/g, '<br>\n');
       }
       if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
         html = window.DOMPurify.sanitize(html, {
