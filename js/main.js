@@ -283,8 +283,23 @@ import {
   
       // Markdown -> HTML -> サニタイズ
       let html = decrypted.text;
-      if (window.marked && typeof window.marked.parse === 'function') {
-        html = window.marked.parse(decrypted.text);
+      if (window.marked) {
+        // 改行もある程度そのまま活かす
+        if (typeof window.marked.setOptions === 'function') {
+          window.marked.setOptions({
+            gfm: true,
+            breaks: true
+          });
+        }
+        const parser =
+          typeof window.marked.parse === 'function'
+            ? window.marked.parse
+            : typeof window.marked === 'function'
+            ? window.marked
+            : null;
+        if (parser) {
+          html = parser(decrypted.text);
+        }
       }
       if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
         html = window.DOMPurify.sanitize(html, {
