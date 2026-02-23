@@ -13,10 +13,7 @@
   >
   <link rel="stylesheet" href="./style.css" />
 
-  <!-- Markdownレンダラ（marked） -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- XSS対策（DOMPurify） -->
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+  <!-- Markdownは使わず、プレーンテキストで表示します -->
 </head>
 <body>
   <div class="app">
@@ -48,12 +45,12 @@
 
         <form id="createForm" class="form">
           <div class="form-group">
-            <label for="letterText" class="form-label">本文（Markdown）</label>
+            <label for="letterText" class="form-label">本文</label>
             <textarea
               id="letterText"
               class="form-textarea"
               rows="10"
-              placeholder="例：&#10;# こんにちは&#10;&#10;これは秘密のメッセージです。"
+              placeholder="例：&#10;こんにちは&#10;&#10;これは秘密のメッセージです。"
               required
             ></textarea>
           </div>

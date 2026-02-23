@@ -512,6 +512,9 @@
     font-size: 13px;
     line-height: 1.7;
     color: #111827;
+  /* プレーンテキスト表示時に改行/連続スペースを潰さない */
+  white-space: pre-wrap;
+  word-break: break-word;
   }
   
   .letter-content h1,
