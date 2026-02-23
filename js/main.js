@@ -284,19 +284,37 @@ import {
       // Markdown -> HTML -> サニタイズ
       let html = decrypted.text;
       if (window.marked) {
-        // 改行もある程度そのまま活かす
-        if (typeof window.marked.setOptions === 'function') {
-          window.marked.setOptions({
+        // marked の UMD / ES 版など複数パターンに対応してパーサを取得
+        let markedRoot = window.marked;
+        // v9+ などで window.marked.marked に関数がぶら下がるパターン
+        if (markedRoot && typeof markedRoot.marked === 'function') {
+          markedRoot = markedRoot.marked;
+        }
+
+        // setOptions が生えているオブジェクトを探す
+        const optionsTarget =
+          typeof window.marked.setOptions === 'function'
+            ? window.marked
+            : window.marked.marked && typeof window.marked.marked.setOptions === 'function'
+            ? window.marked.marked
+            : null;
+
+        if (optionsTarget) {
+          // 改行もある程度そのまま活かす
+          optionsTarget.setOptions({
             gfm: true,
             breaks: true
           });
         }
-        const parser =
-          typeof window.marked.parse === 'function'
-            ? window.marked.parse
-            : typeof window.marked === 'function'
-            ? window.marked
-            : null;
+
+        // 実際に使うパーサ関数
+        let parser = null;
+        if (typeof markedRoot === 'function') {
+          parser = markedRoot;
+        } else if (markedRoot && typeof markedRoot.parse === 'function') {
+          parser = markedRoot.parse.bind(markedRoot);
+        }
+
         if (parser) {
           html = parser(decrypted.text);
         }
