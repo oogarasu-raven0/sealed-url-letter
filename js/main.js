@@ -7,7 +7,7 @@ import {
     encodeEncryptedPayload,
     decodeEncryptedPayload
   } from './crypto.js';
-  import { startTypewriter } from './typewriter.js';
+  import { startTypewriterText } from './typewriter.js';
   import { decorateKeywords } from './effects.js';
   
   /**
@@ -280,77 +280,16 @@ import {
         'letter-theme--night'
       );
       letterViewer.classList.add(`letter-theme--${theme}`);
-  
-      // Markdown -> HTML -> サニタイズ
-      let html = decrypted.text;
-      let renderedByMarked = false;
-      if (window.marked) {
-        // marked の UMD / ES 版など複数パターンに対応してパーサを取得
-        let markedRoot = window.marked;
-        // v9+ などで window.marked.marked に関数がぶら下がるパターン
-        if (markedRoot && typeof markedRoot.marked === 'function') {
-          markedRoot = markedRoot.marked;
-        }
 
-        // setOptions が生えているオブジェクトを探す
-        const optionsTarget =
-          typeof window.marked.setOptions === 'function'
-            ? window.marked
-            : window.marked.marked && typeof window.marked.marked.setOptions === 'function'
-            ? window.marked.marked
-            : null;
-
-        if (optionsTarget) {
-          // 改行もそのまま <br> として活かす
-          optionsTarget.setOptions({
-            gfm: true,
-            breaks: true
-          });
-        }
-
-        // 実際に使うパーサ関数
-        let parser = null;
-        if (typeof markedRoot === 'function') {
-          parser = markedRoot;
-        } else if (markedRoot && typeof markedRoot.parse === 'function') {
-          parser = markedRoot.parse.bind(markedRoot);
-        }
-
-        if (parser) {
-          html = parser(decrypted.text);
-          renderedByMarked = true;
-        }
-      }
-
-      // もし何らかの理由で marked が使えなかった場合でも、
-      // 改行だけは <br> に変換して一行潰れを防ぐ
-      if (!renderedByMarked) {
-        html = decrypted.text.replace(/\r\n|\r|\n/g, '<br>\n');
-      }
-      if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
-        html = window.DOMPurify.sanitize(html, {
-          ALLOWED_ATTR: ['href', 'title', 'alt', 'src', 'class'],
-          ALLOWED_TAGS: false // デフォルト許可タグ
-        });
-      }
-  
-      // 画像URLの表示（Markdown本文とは別に追加）
-      if (Array.isArray(decrypted.images) && decrypted.images.length > 0) {
-        const imagesHtml = decrypted.images
-          .map((src) => {
-            const safeSrc = String(src);
-            return `<div class="external-image"><img src="${safeSrc}" alt="添付画像" loading="lazy"></div>`;
-          })
-          .join('');
-        html += imagesHtml;
-      }
+      // 本文は「プレーンテキスト」として表示（Markdown は使わない）
+      const letterText = String(decrypted.text ?? '');
   
       // 手紙ビューをフェードイン
       letterViewer.classList.remove('letter-viewer--hidden');
       typingStatus.textContent = 'タイプ表示中...';
   
       // タイプライター開始
-      startTypewriter(letterContent, html, {
+      startTypewriterText(letterContent, letterText, {
         interval: 18,
         skipButton,
         scrollContainer: letterScrollContainer,
@@ -358,6 +297,27 @@ import {
           typingStatus.textContent = '表示完了';
           // キーワード装飾（全文表示後に行う）
           decorateKeywords(letterContent);
+
+          // 画像URLの表示（本文の下に追加）
+          if (Array.isArray(decrypted.images) && decrypted.images.length > 0) {
+            decrypted.images.forEach((src) => {
+              const url = String(src ?? '').trim();
+              if (!url) return;
+              // 最低限の安全策：http/https のみ許可
+              if (!/^https?:\/\//i.test(url)) return;
+
+              const wrap = document.createElement('div');
+              wrap.className = 'external-image';
+
+              const img = document.createElement('img');
+              img.loading = 'lazy';
+              img.alt = '添付画像';
+              img.src = url;
+
+              wrap.appendChild(img);
+              letterContent.appendChild(wrap);
+            });
+          }
         }
       });
   
