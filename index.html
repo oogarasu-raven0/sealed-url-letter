@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Letter URL - 暗号化手紙共有</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- 落ち着いた日本語フォント -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="./style.css" />
+
+  <!-- Markdownレンダラ（marked） -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- XSS対策（DOMPurify） -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="app-header__title">
+        <span class="logo-mark">✉</span>
+        <div>
+          <h1>Letter URL</h1>
+          <p class="subtitle">暗号化された手紙をURLで届ける</p>
+        </div>
+      </div>
+      <nav class="app-header__nav">
+        <button id="navCreate" class="nav-button nav-button--active" type="button">
+          作成
+        </button>
+        <button id="navView" class="nav-button" type="button">
+          閲覧
+        </button>
+      </nav>
+    </header>
+
+    <main class="app-main">
+      <!-- 作成モード -->
+      <section id="createSection" class="panel panel--active" aria-label="手紙の作成">
+        <h2 class="panel-title">手紙を作成</h2>
+        <p class="panel-description">
+          Markdownで本文を書き、パスワードを設定すると、暗号化されたURLが生成されます。
+        </p>
+
+        <form id="createForm" class="form">
+          <div class="form-group">
+            <label for="letterText" class="form-label">本文（Markdown）</label>
+            <textarea
+              id="letterText"
+              class="form-textarea"
+              rows="10"
+              placeholder="例：&#10;# こんにちは&#10;&#10;これは秘密のメッセージです。"
+              required
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="imageUrls" class="form-label">
+              画像URL（任意・複数行で複数指定可）
+            </label>
+            <textarea
+              id="imageUrls"
+              class="form-textarea"
+              rows="4"
+              placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.png"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="themeSelect" class="form-label">
+              テーマ（今は見た目にのみ反映予定）
+            </label>
+            <select id="themeSelect" class="form-select">
+              <option value="default">デフォルト</option>
+              <option value="sepia">セピア</option>
+              <option value="night">ナイト</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="createPassword" class="form-label">パスワード</label>
+            <input
+              id="createPassword"
+              class="form-input"
+              type="password"
+              autocomplete="new-password"
+              required
+              placeholder="受け取り手にだけ伝えるパスワード"
+            />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">URLを生成</button>
+          </div>
+
+          <p id="createError" class="error-message" aria-live="polite"></p>
+        </form>
+
+        <section id="resultSection" class="result-section" aria-label="生成されたURL" hidden>
+          <h3 class="result-title">共有用URL</h3>
+          <div class="result-row">
+            <input
+              id="generatedUrl"
+              class="form-input form-input--mono"
+              type="text"
+              readonly
+            />
+            <button id="copyUrlButton" class="btn-secondary" type="button">
+              コピー
+            </button>
+          </div>
+          <p id="urlLengthInfo" class="url-info"></p>
+          <p id="urlLengthWarning" class="warning-message" hidden>
+            URLが非常に長くなっています。一部のブラウザやサービスで正常に扱えない場合があります。
+            可能であれば本文を短くするか、画像URLの数を減らしてください。
+          </p>
+        </section>
+      </section>
+
+      <!-- 閲覧モード -->
+      <section id="viewSection" class="panel" aria-label="手紙の閲覧">
+        <h2 class="panel-title">手紙を閲覧</h2>
+        <p class="panel-description">
+          dataクエリ付きURLからアクセスすると、自動的に暗号化データが読み込まれます。
+          パスワードを入力して封筒を開封してください。
+        </p>
+
+        <div id="viewHint" class="info-message">
+          現在のURLには暗号化データが含まれていません。まず「作成」タブで手紙を作成し、生成されたURLから再アクセスしてください。
+        </div>
+
+        <div id="viewContainer" class="view-container" hidden>
+          <div class="envelope-layout">
+            <div class="envelope-wrapper">
+              <!-- 封筒本体 -->
+              <div id="envelope" class="envelope" aria-hidden="true">
+                <div class="envelope__back"></div>
+                <div class="envelope__flap"></div>
+                <div class="envelope__letter">
+                  <div class="envelope__letter-inner">
+                    <p>パスワードを入力して開封してください。</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- パスワードフォーム -->
+              <form id="viewForm" class="password-form">
+                <label for="viewPassword" class="form-label">パスワード</label>
+                <input
+                  id="viewPassword"
+                  class="form-input"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                />
+                <button id="openButton" class="btn-primary" type="submit">
+                  開封する
+                </button>
+                <p id="viewError" class="error-message" aria-live="polite"></p>
+              </form>
+            </div>
+
+            <!-- 手紙表示 -->
+            <div id="letterViewer" class="letter-viewer letter-viewer--hidden">
+              <div class="letter-viewer__controls">
+                <span class="letter-viewer__status" id="typingStatus">
+                  タイプ表示中...
+                </span>
+                <button
+                  id="skipTypingButton"
+                  class="btn-secondary btn-secondary--small"
+                  type="button"
+                >
+                  すぐ全文を表示
+                </button>
+              </div>
+              <div id="letterScrollContainer" class="letter-scroll-container">
+                <article id="letterContent" class="letter-content"></article>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p class="app-footer__text">
+        パスワードはサーバーに送信されず、ブラウザ内でのみ使用されます。
+      </p>
+    </footer>
+  </div>
+
+  <!-- メインスクリプト（ES Modules） -->
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
